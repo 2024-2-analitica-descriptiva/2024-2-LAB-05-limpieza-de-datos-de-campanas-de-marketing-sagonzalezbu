@@ -49,8 +49,44 @@ def clean_campaign_data():
 
 
     """
+    import glob
+    import pandas as pd
+    import os
 
-    return
+    input_directory = 'files/input'
+    files = glob.glob(f"{input_directory}/*")
+    dataframes = [
+        pd.read_csv(
+            file,
+            delimiter=",",
+            index_col=0,
+        )
+        for file in files
+    ]
+
+    dataframe = pd.concat(dataframes, ignore_index=True)
+    print(dataframe.head())
+    print(dataframe.columns)
+
+    os.makedirs('files/output', exist_ok = True)
+
+    client_csv = dataframe[['client_id','age','job','marital','education','credit_default','mortgage']].copy()
+    client_csv['job'] = client_csv['job'].str.replace(".", "", regex=False).str.replace("-", "_", regex=False)
+    client_csv["education"] = client_csv["education"].str.replace(".", "_", regex=False).replace("unknown", pd.NA)
+    client_csv["credit_default"] = client_csv["credit_default"].apply(lambda x: 1 if x == "yes" else 0)
+    client_csv["mortgage"] = client_csv["mortgage"].apply(lambda x: 1 if x == "yes" else 0)
+
+    campaign_csv = dataframe[['client_id','number_contacts','contact_duration','previous_campaign_contacts','previous_outcome','campaign_outcome']]
+    campaign_csv['previous_outcome'] = campaign_csv['previous_outcome'].apply(lambda x: 1 if x == 'success' else 0)
+    campaign_csv['campaign_outcome'] = campaign_csv['campaign_outcome'].apply(lambda x: 1 if x == 'yes' else 0)
+    campaign_csv['last_contact_date'] = pd.to_datetime('2022-'  + dataframe['month'].astype(str) + '-' + dataframe['day'].astype(str) , format="%Y-%b-%d")
+    
+    economics_csv = dataframe[['client_id', 'cons_price_idx', 'euribor_three_months']].copy()
+
+    client_csv.to_csv('files/output/client.csv', index=False)
+    campaign_csv.to_csv('files/output/campaign.csv', index=False)
+    economics_csv.to_csv('files/output/economics.csv', index=False)
+
 
 
 if __name__ == "__main__":
